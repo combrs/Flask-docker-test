@@ -1,0 +1,32 @@
+version: "3.4"
+
+networks:
+  flaskhello:
+    external: false
+    driver: bridge
+
+services:
+  gunicorn:
+     build: 
+        context: .
+        network: host
+     image: "flaskhello:${TAG}"
+     container_name: gunicorn_flaskhello
+     restart: unless-stopped
+     env_file:
+       - env_file_testteam
+     networks:
+       - flaskhello
+
+  proxy: 
+     image: "nginx:stable"
+     container_name: nginx_flaskhello
+     restart: unless-stopped
+     networks:
+       - flaskhello
+     volumes:
+       - ./nginx.conf:/etc/nginx/conf.d/default.conf
+     ports:
+       - 80:80
+     depends_on:
+       - gunicorn

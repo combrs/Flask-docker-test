@@ -1,0 +1,83 @@
+1. создадим файл зависимостей установки Flask
+    - создадим вирт. окружение python
+        sudo apt-get install python3-venv
+        mkdir flaskhello && cd flaskhello
+        python3 -m venv env
+        source env/bin/activate
+    - установим Flask в этом окружении и положим все установленные пакеты в файл   
+        python -m pip install Flask==1.1.1
+        python -m pip freeze > requirements.txt
+2. Создадим приложение app.py
+    - редактируем
+        mcedit app.py
+    - тестируем
+        python app.py
+    - выходим из вирт. окружения
+        deactivate
+3. Создадим docker образ с приложением
+    - редактируем файл для сборки
+        mcedit Dockerfile
+    - строим образ
+        docker build --network=host -t flaskhello:1.0 .
+        тут используется --network=host, так как при запуске контейнера для постройки туда попадает системный адрес ресолвера по умолчанию, у меня это 192.168.1.11
+        и изнутри контейнера pip install не имеет доступа к этой подсети (соотвественно, не может ни адреса получить, ни пакеты поставить)
+4. протестируем образ с приложением (тестовый сервер flask)
+    docker run --net=host --rm --name flaskhello flaskhello:1.1
+    WARNING: This is a development server.
+    Running on http://127.0.0.1:5000/
+    $ curl -sv localhost:5000
+    * Connected to localhost (127.0.0.1) port 5000 (#0)
+    > GET / HTTP/1.1
+    < HTTP/1.0 200 OK
+    < Server: Werkzeug/1.0.1 Python/3.8.3
+    Hello World from Mike Lykov for test task for BaikalTeam!
+5. Соберем рабочий образ (не тестовый с gunicorn)
+    - Используем написанный Dockerfile
+    - собираем тестовый образ с bash и утилитами (для отладки)
+        FROM python:3.8-buster
+        docker build --network=host -t flaskhello:1.7 .
+    - запускаем в демоническом режиме и проверяем (процессы внутри контейнера)
+        $ docker run -d --net=host --rm --name flaskhello flaskhello:1.7
+        c31639e39e60bc534f52af7905db1ba1ad78d5d6f7a668733585f8075a67b9c4
+        $ docker exec flaskhello id
+            uid=0(root) gid=0(root) groups=0(root)
+        $ docker exec -it flaskhello /bin/bash
+            root@p:/usr/src/app# ps aux --cols 300
+                USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+                root           1  0.3  0.3  30776 24476 ?        Ss   18:01   0:00 /usr/local/bin/python /usr/local/bin/gunicorn --worker-tmp-dir /dev/shm --workers=2 --threads=4 --worker-class=gthread --log-file=- --access-logfile=- --log-level=info mybaikalteamapp:mybaikalteamflask
+                root           8  0.1  0.4  40036 28560 ?        S    18:01   0:00 /usr/local/bin/python /usr/local/bin/gunicorn --worker-tmp-dir /dev/shm --workers=2 --threads=4 --worker-class=gthread --log-file=- --access-logfile=- --log-level=info mybaikalteamapp:mybaikalteamflask
+                root           9  0.1  0.4  40176 28836 ?        S    18:01   0:00 /usr/local/bin/python /usr/local/bin/gunicorn --worker-tmp-dir /dev/shm --workers=2 --threads=4 --worker-class=gthread --log-file=- --access-logfile=- --log-level=info mybaikalteamapp:mybaikalteamflask
+                root          10  0.1  0.0   5756  3560 pts/0    Ss   18:02   0:00 /bin/bash
+                root          16  0.0  0.0   9396  3036 pts/0    R+   18:05   0:00 ps aux --cols 300
+                
+        Видно, что gunicorn является процессом с pid=1 (основным), и он же запустил два воркера для обработки запросов (--workers=2)  c pid 8 и 9, и они работают от пользователя root.
+        размер образа flaskhello  1.7  a458534377f7  949MB
+6. Соберем образ меньшего размера и с воркерами, работающими от пользователя
+    - Исправляем Dockerfile
+        FROM python:3.8-slim-buster
+        RUN useradd gunicorn && chown -R gunicorn /usr/src/app
+        USER gunicorn
+    - результат: gunicorn работает так же
+        $ docker logs --tail=10 flaskhello
+            [2020-06-22 17:56:05 +0000] [1] [INFO] Starting gunicorn 20.0.4
+            [2020-06-22 17:56:05 +0000] [1] [INFO] Listening at: http://127.0.0.1:8000 (1)
+            [2020-06-22 17:56:05 +0000] [1] [INFO] Using worker: gthread
+            [2020-06-22 17:56:05 +0000] [8] [INFO] Booting worker with pid: 8
+            [2020-06-22 17:56:05 +0000] [9] [INFO] Booting worker with pid: 9
+     - bash недоступен, но есть например id       
+        $ docker exec flaskhello id
+            uid=1000(gunicorn) gid=1000(gunicorn) groups=1000(gunicorn)
+        т.е. процессы работают от пользователя.
+        Размер образа более чем в 4 раза меньше flaskhello 2.0  fc219c407d12   191MB
+7. Проведем тестирование скорости ради интереса (с той же машины, что не совсем корректно)        
+    ab -k -n 1000 -c 6 localhost:8000/
+        Requests per second:    1338.53 [#/sec] (mean)
+
+
+
+    
+        
+        
+    
+    
+   
