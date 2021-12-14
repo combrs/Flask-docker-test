@@ -1,7 +1,7 @@
 
 FlaskHello
 
-Test task flask application for testTeam.
+Test task flask application for BaikalTeam.
 This archive contains two shell scripts:
 flaskhello-build-nocompose.sh  flaskhello-build.sh
 
@@ -9,7 +9,7 @@ flaskhello-build-nocompose.sh - build and run a single container with app and gu
 flaskhello-build.sh  - build and run all needed to use nginx frontend proxy for gunicorn container with app
 No arguments needed. 
 
-There is an env file "env_file_testteam", which contains configurable port number for gunicorn and nginx proxy_pass.
+There is an env file "env_file_baikalteam", which contains configurable port number for gunicorn and nginx proxy_pass.
 It demonstrates how to configure containers from external source.
 
 For start app unarchive contents on host with installed docker&docker-compose (tar -xf flaskhello.tar), set desired port (or leave it default 8080) 
@@ -31,7 +31,7 @@ check it with curl:
 curl -sv localhost:
 ...
 < HTTP/1.1 200 OK
-Hello World from Mike Lykov for test task for testTeam!
+Hello World from Mike Lykov for test task for BaikalTeam!
 check it with ab:
 ab -n 1000 -c 4 localhost/
 ...

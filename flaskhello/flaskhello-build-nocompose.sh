@@ -18,5 +18,5 @@ if [[ -z "$CONT" ]]; then
 else
     docker rm -f $CONT
 fi
-docker run -d --net=host --rm --name flaskhello --env-file=env_file_testteam flaskhello:${DATE}-${VER}
+docker run -d --net=host --rm --name flaskhello --env-file=env_file_baikalteam flaskhello:${DATE}-${VER}
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG=env_file_testteam
+CONFIG=env_file_baikalteam
 source ./$CONFIG
 GUNICORNPORT=${GUNICORNPORT:-8080}
 export GUNICORNPORT
